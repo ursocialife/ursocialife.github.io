@@ -534,7 +534,7 @@ const App: React.FC = () => {
             }
         });
         return unsub;
-    }, [deck, kingLevel]); 
+    }, [deck, kingLevel, username]); 
 
     const generateDailyShop = (currentTrophies: number, preserveFree: boolean = false) => {
         const availableCards = CARDS.filter(c => c.unlockTrophies <= currentTrophies);
@@ -605,7 +605,7 @@ const App: React.FC = () => {
             generateDailyShop(trophies, false);
             setLastLoginDate(today);
         }
-    }, [lastLoginDate]);
+    }, [lastLoginDate, trophies]);
 
     // --- EFFECT: Game Loop ---
     useEffect(() => {
@@ -627,7 +627,7 @@ const App: React.FC = () => {
                     // 1. Core Game Update (Physics, Logic, Elixir)
                     const nextState = updateGame(prev, dt);
 
-                    // 2. AI Logic (Only if NOT Multiplayer Host)
+                    // 2. AI Logic (STRICTLY DISABLED IN MULTIPLAYER)
                     // If Host, we wait for Guest inputs via mpService listener
                     if (mpRole === 'NONE') {
                         const aiResult = processAiTurn(nextState, trophies);
@@ -827,6 +827,10 @@ const App: React.FC = () => {
         // Current Arena ID (Host determines this)
         const arenaId = ARENAS.slice().reverse().find(a => trophies >= a.minTrophies)?.id || 0;
 
+        // AI Data logic - Don't generate AI deck if playing MP
+        const isMp = asHost || mpRole !== 'NONE';
+        const aiInitialDeck = !isMp ? generateAiDeck(trophies) : [];
+
         const newGameState: GameState = {
             entities: [
                 { id: 'kt_p', defId: 'king_tower', type: CardType.TOWER, side: PlayerSide.PLAYER, x: 50, y: 92, hp: calculateStats(TOWERS.find(t=>t.id==='king_tower')!.stats, battleLevel, true).hp, maxHp: calculateStats(TOWERS.find(t=>t.id==='king_tower')!.stats, battleLevel, true).hp, shieldHp: 0, maxShieldHp: 0, stats: calculateStats(TOWERS.find(t=>t.id==='king_tower')!.stats, battleLevel, true), level: battleLevel, lastAttackTime: 0, lastDamageTime: 0, lastSpawnTime: 0, targetId: null, state: 'IDLE', deployTimer: 0, frozenTimer: 0, stunTimer: 0, rageTimer: 0, rootTimer: 0, chargeTimer: 0, isCharging: false },
@@ -849,8 +853,8 @@ const App: React.FC = () => {
             playerCrowns: 0,
             enemyCrowns: 0,
             phase: phase,
-            aiHand: generateAiDeck(trophies).slice(0, 4),
-            aiDeckCycle: generateAiDeck(trophies).slice(4),
+            aiHand: aiInitialDeck.slice(0, 4),
+            aiDeckCycle: aiInitialDeck.slice(4),
             aiNextMoveTime: Date.now() + 3000,
             gameMode: mode
         };
@@ -1016,6 +1020,7 @@ const App: React.FC = () => {
                       selectedCardType={selectedCardId ? (CARDS.find(c=>c.id===selectedCardId)?.type || null) : null}
                       activeEmotes={gameState.activeEmotes}
                       muteEmotes={muteEmotes}
+                      mpRole={mpRole}
                       // Use MP Arena ID if available, otherwise calculate from local trophies
                       arenaId={mpArenaId !== null ? mpArenaId : (ARENAS.slice().reverse().find(a => trophies >= a.minTrophies)?.id || 0)}
                       projectiles={gameState.projectiles}

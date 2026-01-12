@@ -378,7 +378,8 @@ export const startMusic = (track: 'MENU' | 'BATTLE') => {
     
     masterGain = ctx.createGain();
     masterGain.gain.setValueAtTime(0, ctx.currentTime);
-    masterGain.gain.linearRampToValueAtTime(0.8, ctx.currentTime + 1); // Fade in
+    // Reduced music volume down by 30% from 0.8 to 0.56
+    masterGain.gain.linearRampToValueAtTime(0.56, ctx.currentTime + 1); // Fade in
     masterGain.connect(ctx.destination);
 
     nextNoteTime = ctx.currentTime + 0.1;

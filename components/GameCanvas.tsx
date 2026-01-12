@@ -1,6 +1,6 @@
 
 import React, { useRef, useEffect, useState, useMemo } from 'react';
-import { GameEntity, PlayerSide, CardType, ActiveEmote, GameProjectile, GameParticle, MovementType, PlayerCollection } from '../types';
+import { GameEntity, PlayerSide, CardType, ActiveEmote, GameProjectile, GameParticle, MovementType, PlayerCollection, MultiplayerRole } from '../types';
 import { UnitModel } from './UnitModels';
 import { getArenaBackgroundStyle, getArenaEffects, ArenaDecorations } from './ArenaVisuals';
 import { CARDS, getSpawnPattern, RARITY_INFO } from '../constants';
@@ -312,6 +312,7 @@ interface GameCanvasProps {
   projectiles?: GameProjectile[]; 
   particles?: GameParticle[];
   collection: PlayerCollection;
+  mpRole: MultiplayerRole;
 }
 
 export const GameCanvas: React.FC<GameCanvasProps> = ({ 
@@ -324,7 +325,8 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     arenaId, 
     projectiles = [], 
     particles = [],
-    collection
+    collection,
+    mpRole
 }) => {
   const arenaRef = useRef<HTMLDivElement>(null);
   const [arenaAspectRatio, setArenaAspectRatio] = useState(0.56); 
@@ -608,7 +610,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
           </div>
       ))}
 
-      {activeEmotes.filter(e => !muteEmotes).map(emote => (
+      {activeEmotes.filter(e => !muteEmotes && (mpRole === 'NONE' || e.side === PlayerSide.ENEMY)).map(emote => (
           <div 
             key={emote.id}
             className="absolute z-[70] animate-bounce"

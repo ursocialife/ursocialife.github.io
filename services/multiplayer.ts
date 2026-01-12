@@ -19,28 +19,25 @@ class MultiplayerService {
 
     private async cleanup() {
         if (this.conn) {
-            try { this.conn.close(); } catch(e){}
+            try { 
+                this.conn.removeAllListeners();
+                this.conn.close(); 
+            } catch(e){}
         }
         if (this.peer) {
-            try { this.peer.destroy(); } catch(e){}
+            try { 
+                this.peer.removeAllListeners();
+                this.peer.destroy(); 
+            } catch(e){}
         }
         this.conn = null;
         this.peer = null;
         this.myCode = null;
-        // NOTE: We do NOT clear listeners here because the UI components (App.tsx) 
-        // rely on persistent subscriptions that survive session restarts.
-        
         // Small delay to ensure sockets close
         return new Promise(resolve => setTimeout(resolve, 100));
     }
 
     public async initHost(code: string, onConnect: () => void, onError: (err: string) => void) {
-        if (typeof Peer === 'undefined') {
-            console.error("PeerJS not loaded");
-            onError("Multiplayer library not loaded");
-            return;
-        }
-
         await this.cleanup();
 
         const peerId = `cr-clone-room-${code}`;
@@ -65,7 +62,6 @@ class MultiplayerService {
             this.peer.on('connection', (conn: any) => {
                 console.log('Peer connected');
                 
-                // If we already have a connection, close the new one (1v1 only)
                 if (this.conn && this.conn.open) {
                     conn.close();
                     return;
@@ -76,31 +72,35 @@ class MultiplayerService {
             });
 
             this.peer.on('disconnected', () => {
-                console.warn('Peer disconnected from server. Attempting reconnect...');
+                console.warn('Host: Disconnected from signaling server. Attempting to reconnect peer...');
                 if (this.peer && !this.peer.destroyed) {
                     this.peer.reconnect();
                 }
             });
 
             this.peer.on('error', (err: any) => {
-                console.error('Peer error:', err);
+                console.error('Host: Peer error:', err);
+                
+                // Ignore signaling errors if we have an active P2P data connection
+                if (this.conn && this.conn.open) {
+                    const transientErrors = ['network', 'server-error', 'socket-error', 'socket-closed', 'disconnected'];
+                    if (transientErrors.includes(err.type)) {
+                        console.warn(`Host: Signaling error "${err.type}" ignored as P2P is active.`);
+                        return;
+                    }
+                }
+
                 if (err.type === 'unavailable-id') {
                     onError("Code already in use. Try again.");
                 } else if (err.type === 'peer-unavailable') {
-                    // Host shouldn't get this usually
-                } else if (['network', 'server-error', 'socket-error', 'socket-closed'].includes(err.type)) {
-                     // If we have an active P2P connection, we can ignore signaling errors
-                     if (!this.conn || !this.conn.open) {
-                         // Don't spam error if we are reconnecting
-                     }
+                    // Host usually doesn't get this
                 } else {
-                    // Fatal errors
-                    onError("Error: " + (err.type || "Unknown"));
+                    onError("Host Error: " + (err.type || "Lost connection to server."));
                 }
             });
         } catch (e) {
             console.error(e);
-            onError("Failed to initialize peer.");
+            onError("Failed to initialize host.");
         }
     }
 
@@ -151,28 +151,40 @@ class MultiplayerService {
                 
                 conn.on('close', () => {
                     console.log("Connection closed");
-                    // onError("Host disconnected"); // Optional: depends on game state
                 });
 
-                // Fail safe timeout
                 connectionTimeout = setTimeout(() => {
                     if (!this.conn || !this.conn.open) {
-                        onError("Connection timed out. Check code or try again.");
+                        onError("Connection timed out. Check code.");
                         this.disconnect();
                     }
-                }, 8000);
+                }, 10000);
+            });
+
+            this.peer.on('disconnected', () => {
+                console.warn('Guest: Disconnected from signaling server. Reconnecting...');
+                if (this.peer && !this.peer.destroyed) {
+                    this.peer.reconnect();
+                }
             });
 
             this.peer.on('error', (err: any) => {
-                console.error('Peer error:', err);
+                console.error('Guest: Peer error:', err);
+
+                if (this.conn && this.conn.open) {
+                    const transientErrors = ['network', 'server-error', 'socket-error', 'socket-closed', 'disconnected'];
+                    if (transientErrors.includes(err.type)) {
+                        console.warn(`Guest: Signaling error "${err.type}" ignored as P2P is active.`);
+                        return;
+                    }
+                }
+
                 if (err.type === 'peer-unavailable') {
                     clearTimeout(connectionTimeout);
                     onError("Room not found. Check the code.");
                     this.disconnect();
-                } else if (['network', 'server-error', 'socket-error'].includes(err.type)) {
-                    // Retry logic handled internally by PeerJS or user manual retry
                 } else {
-                    onError("Client Error: " + (err.type || "Unknown"));
+                    onError("Guest Error: " + (err.type || "Lost connection to server."));
                 }
             });
         } catch(e) {
@@ -187,9 +199,14 @@ class MultiplayerService {
             this.listeners.forEach(l => l(data as MPMessage));
         });
 
-        // Small delay to ensure connection is stable before triggering game start
+        this.conn.on('close', () => {
+            console.log("P2P Connection closed");
+        });
+
         setTimeout(() => {
-            onReady();
+            if (this.conn && this.conn.open) {
+                onReady();
+            }
         }, 500);
     }
 
