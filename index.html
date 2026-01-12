@@ -29,49 +29,35 @@
         height: 100%;
         margin: 0;
         padding: 0;
-        overflow: hidden; /* Prevent scrolling on the body */
+        overflow: hidden;
         display: flex;
         justify-content: center;
         align-items: center;
-        
-        /* Light Mode Default Gutter Background */
-        background-color: #d1d5db; /* gray-300 */
+        background-color: #d1d5db;
         transition: background-color 0.3s ease;
       }
 
-      /* Dark Mode Gutter Background */
       html.dark body {
-        background-color: #111827; /* gray-900 */
+        background-color: #111827;
       }
 
       #root {
-        /* 
-           Enforce Phone Dimensions:
-           1. Aspect Ratio: Strict 9:16
-           2. Height: Fill screen but cap at 850px (Desktop constraint)
-           3. Width: Auto-calculated by aspect-ratio, but capped at 100vw (Mobile constraint)
-        */
         height: 100%;
         max-height: 850px;
         aspect-ratio: 9 / 16;
         width: auto;
         max-width: 100%;
-        margin: auto; /* Center in flex container just in case */
-        
+        margin: auto;
         position: relative;
         box-shadow: 0 0 50px rgba(0,0,0,0.5);
         overflow: hidden;
-
-        /* Light Mode App Background */
-        background-color: #f3f4f6; /* gray-100 */
+        background-color: #f3f4f6;
       }
 
-      /* Dark Mode App Background */
       html.dark #root {
-        background-color: #1a202c; /* gray-800 */
+        background-color: #1a202c;
       }
 
-      /* Custom scrollbar hiding */
       .no-scrollbar::-webkit-scrollbar {
         display: none;
       }
@@ -80,14 +66,16 @@
         scrollbar-width: none;
       }
     </style>
-  <script type="importmap">
+<script type="importmap">
 {
   "imports": {
-    "react": "https://esm.sh/react@^19.2.3",
-    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
     "react/": "https://esm.sh/react@^19.2.3/",
+    "react": "https://esm.sh/react@^19.2.3",
+    "vite": "https://esm.sh/vite@^7.3.1",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
     "@google/genai": "https://esm.sh/@google/genai@^1.35.0",
-    "peerjs": "https://esm.sh/peerjs@^1.5.5"
+    "peerjs": "https://esm.sh/peerjs@^1.5.5",
+    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.2"
   }
 }
 </script>
