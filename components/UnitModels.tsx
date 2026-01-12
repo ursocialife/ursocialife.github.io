@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { PlayerSide } from '../types';
 
@@ -36,6 +37,18 @@ export const UnitModel: React.FC<UnitModelProps> = ({ defId, side, className = "
   const isBack = facing === 'back';
   const isAttacking = action === 'ATTACKING';
   const isMoving = action === 'MOVING';
+
+  // Animation Styles
+  const walkAnim = isMoving ? { animation: 'walk-waddle 0.6s ease-in-out infinite' } : {};
+  const bodyAttackAnim = isAttacking ? { animation: 'attack-recoil 0.2s ease-out' } : {};
+  
+  const getWeaponAnim = (type: 'swing' | 'thrust' | 'shoot') => {
+      if (!isAttacking) return {};
+      if (type === 'swing') return { animation: 'attack-melee 0.4s ease-in-out' };
+      if (type === 'thrust') return { animation: 'attack-thrust 0.4s ease-in-out' };
+      if (type === 'shoot') return { animation: 'attack-recoil 0.2s ease-out' };
+      return {};
+  };
 
   const defs = (
     <defs>
@@ -138,76 +151,87 @@ export const UnitModel: React.FC<UnitModelProps> = ({ defId, side, className = "
       const filter = isGhost ? undefined : "url(#um_dropShadow)";
       const opacity = isGhost ? 0.7 : 1;
 
+      // Determine weapon animation type
+      let weaponAnimType: 'swing' | 'thrust' | 'shoot' = 'swing';
+      if (['spear', 'lance'].includes(weapon)) weaponAnimType = 'thrust';
+      if (['bow', 'gun', 'staff', 'cannon_control'].includes(weapon)) weaponAnimType = 'shoot';
+
       return (
           <g transform={`translate(${x}, ${y}) scale(${s})`} filter={filter} opacity={opacity}>
-              {!isGhost ? (
-                  <>
-                    <path d="M-8 30 L-8 40 L-12 40 L-10 30" fill="#4b5563" stroke="black" strokeWidth="1" />
-                    <path d="M8 30 L8 40 L12 40 L10 30" fill="#4b5563" stroke="black" strokeWidth="1" />
-                  </>
-              ) : (
-                  <path d="M-10 25 Q-5 45 0 35 Q5 45 10 25 L10 20 L-10 20 Z" fill={finalArmor} stroke="black" strokeWidth="1" opacity="0.8" />
-              )}
-              <path d="M-14 -2 L14 -2 L12 28 L-12 28 Z" fill={finalArmor} stroke="black" strokeWidth="1.5" />
-              <circle cx="-16" cy="5" r="5" fill={finalArmor} stroke="black" strokeWidth="1" />
-              <circle cx="16" cy="5" r="5" fill={finalArmor} stroke="black" strokeWidth="1" />
-              <rect x="-18" y="5" width="4" height="15" fill={skinFill} transform="rotate(10 -16 5)" stroke="black" strokeWidth="0.5" />
-              <rect x="14" y="5" width="4" height="15" fill={skinFill} transform="rotate(-10 16 5)" stroke="black" strokeWidth="0.5" />
-              {!isGhost && (
-                  <>
-                    <rect x="-13" y="24" width="26" height="6" fill="#451a03" rx="1" stroke="black" strokeWidth="0.5" />
-                    <rect x="-3" y="24" width="6" height="6" fill="url(#um_goldGrad)" />
-                  </>
-              )}
-              <circle cx="0" cy="-10" r="13" fill={skinFill} stroke="black" strokeWidth="1.5" />
-              {!isBack && hat !== 'bucket' && (
-                  <g>
-                    <ellipse cx="-4" cy="-12" rx="1.5" ry="2" fill="black" />
-                    <ellipse cx="4" cy="-12" rx="1.5" ry="2" fill="black" />
-                    <path d="M-7 -16 L-2 -15" stroke="black" strokeWidth="1" strokeLinecap="round" />
-                    <path d="M7 -16 L2 -15" stroke="black" strokeWidth="1" strokeLinecap="round" />
-                    {hasBeard && <path d="M-10 -5 Q0 10 10 -5 L10 2 Q0 18 -10 2 Z" fill={hairColor} stroke="black" strokeWidth="0.5" />}
-                    {skinColor === colors.goblin && (
-                        <g>
-                            <path d="M-13 -10 L-22 -16 L-13 -4 Z" fill={skinColor} stroke="black" />
-                            <path d="M13 -10 L22 -16 L13 -4 Z" fill={skinColor} stroke="black" />
-                            <path d="M-2 -5 L0 -2 L2 -5" fill="none" stroke="black" strokeWidth="0.5" />
-                        </g>
-                    )}
-                  </g>
-              )}
-              {hat === 'helmet' && (
-                  <g>
-                      <path d="M-14 -12 Q0 -32 14 -12 L14 -8 L-14 -8 Z" fill="url(#um_metalGrad)" stroke="black" />
-                      <rect x="-2" y="-30" width="4" height="10" fill="url(#um_metalGrad)" stroke="black" /> 
-                  </g>
-              )}
-              {hat === 'hood' && <path d="M-15 -10 Q0 -34 15 -10 L15 5 Q0 12 -15 5 Z" fill={finalArmor} stroke="black" />}
-              {hat === 'crown' && <path d="M-12 -18 L-6 -10 L0 -18 L6 -10 L12 -18 L12 -5 L-12 -5 Z" fill="url(#um_goldGrad)" stroke="black" strokeWidth="1" />}
-              {hat === 'king_crown' && (
-                  <g>
-                      <path d="M-14 -18 L-7 -10 L0 -20 L7 -10 L14 -18 L14 -5 L-14 -5 Z" fill="url(#um_goldGrad)" stroke="black" />
-                      <rect x="-14" y="-5" width="28" height="4" fill={colors.main} stroke="black" />
-                  </g>
-              )}
-              {hat === 'wizard' && <path d="M-16 -12 L0 -40 L16 -12 Z" fill={finalArmor} stroke="black" />}
-              {hat === 'mohawk' && <path d="M-2 -28 L2 -28 L2 -5 L-2 -5 Z" fill="#1e293b" stroke="black" strokeWidth="0.5" />}
-              {hat === 'ushanka' && <rect x="-16" y="-22" width="32" height="14" rx="3" fill="#713f12" stroke="black" />}
-              {hat === 'bucket' && (
-                  <g>
-                      <rect x="-14" y="-24" width="28" height="24" rx="2" fill="url(#um_darkMetalGrad)" stroke="black" />
-                      <rect x="-14" y="-14" width="28" height="4" fill="black" opacity="0.5" />
-                  </g>
-              )}
-              {hat === 'none' && !isFemale && !hasBeard && <path d="M-14 -12 Q0 -26 14 -12" fill={hairColor} stroke="black" strokeWidth="0.5" />}
-              {isFemale && (
-                  <g>
-                      <path d="M-14 -12 Q0 -32 14 -12 L16 12 L-16 12 Z" fill={hairColor} stroke="black" strokeWidth="0.5" />
-                      <path d="M-14 -12 L-14 10" stroke={hairColor} strokeWidth="2" />
-                      <path d="M14 -12 L14 10" stroke={hairColor} strokeWidth="2" />
-                  </g>
-              )}
-              <g className={isAttacking ? 'animate-pulse' : ''} transform={isAttacking ? 'rotate(-20)' : ''}>
+              
+              {/* Body Group (Walking/Recoil) */}
+              <g style={{ ...walkAnim, ...bodyAttackAnim, transformOrigin: 'center center' }}>
+                  {!isGhost ? (
+                      <>
+                        <path d="M-8 30 L-8 40 L-12 40 L-10 30" fill="#4b5563" stroke="black" strokeWidth="1" />
+                        <path d="M8 30 L8 40 L12 40 L10 30" fill="#4b5563" stroke="black" strokeWidth="1" />
+                      </>
+                  ) : (
+                      <path d="M-10 25 Q-5 45 0 35 Q5 45 10 25 L10 20 L-10 20 Z" fill={finalArmor} stroke="black" strokeWidth="1" opacity="0.8" />
+                  )}
+                  <path d="M-14 -2 L14 -2 L12 28 L-12 28 Z" fill={finalArmor} stroke="black" strokeWidth="1.5" />
+                  <circle cx="-16" cy="5" r="5" fill={finalArmor} stroke="black" strokeWidth="1" />
+                  <circle cx="16" cy="5" r="5" fill={finalArmor} stroke="black" strokeWidth="1" />
+                  <rect x="-18" y="5" width="4" height="15" fill={skinFill} transform="rotate(10 -16 5)" stroke="black" strokeWidth="0.5" />
+                  <rect x="14" y="5" width="4" height="15" fill={skinFill} transform="rotate(-10 16 5)" stroke="black" strokeWidth="0.5" />
+                  {!isGhost && (
+                      <>
+                        <rect x="-13" y="24" width="26" height="6" fill="#451a03" rx="1" stroke="black" strokeWidth="0.5" />
+                        <rect x="-3" y="24" width="6" height="6" fill="url(#um_goldGrad)" />
+                      </>
+                  )}
+                  <circle cx="0" cy="-10" r="13" fill={skinFill} stroke="black" strokeWidth="1.5" />
+                  {!isBack && hat !== 'bucket' && (
+                      <g>
+                        <ellipse cx="-4" cy="-12" rx="1.5" ry="2" fill="black" />
+                        <ellipse cx="4" cy="-12" rx="1.5" ry="2" fill="black" />
+                        <path d="M-7 -16 L-2 -15" stroke="black" strokeWidth="1" strokeLinecap="round" />
+                        <path d="M7 -16 L2 -15" stroke="black" strokeWidth="1" strokeLinecap="round" />
+                        {hasBeard && <path d="M-10 -5 Q0 10 10 -5 L10 2 Q0 18 -10 2 Z" fill={hairColor} stroke="black" strokeWidth="0.5" />}
+                        {skinColor === colors.goblin && (
+                            <g>
+                                <path d="M-13 -10 L-22 -16 L-13 -4 Z" fill={skinColor} stroke="black" />
+                                <path d="M13 -10 L22 -16 L13 -4 Z" fill={skinColor} stroke="black" />
+                                <path d="M-2 -5 L0 -2 L2 -5" fill="none" stroke="black" strokeWidth="0.5" />
+                            </g>
+                        )}
+                      </g>
+                  )}
+                  {hat === 'helmet' && (
+                      <g>
+                          <path d="M-14 -12 Q0 -32 14 -12 L14 -8 L-14 -8 Z" fill="url(#um_metalGrad)" stroke="black" />
+                          <rect x="-2" y="-30" width="4" height="10" fill="url(#um_metalGrad)" stroke="black" /> 
+                      </g>
+                  )}
+                  {hat === 'hood' && <path d="M-15 -10 Q0 -34 15 -10 L15 5 Q0 12 -15 5 Z" fill={finalArmor} stroke="black" />}
+                  {hat === 'crown' && <path d="M-12 -18 L-6 -10 L0 -18 L6 -10 L12 -18 L12 -5 L-12 -5 Z" fill="url(#um_goldGrad)" stroke="black" strokeWidth="1" />}
+                  {hat === 'king_crown' && (
+                      <g>
+                          <path d="M-14 -18 L-7 -10 L0 -20 L7 -10 L14 -18 L14 -5 L-14 -5 Z" fill="url(#um_goldGrad)" stroke="black" />
+                          <rect x="-14" y="-5" width="28" height="4" fill={colors.main} stroke="black" />
+                      </g>
+                  )}
+                  {hat === 'wizard' && <path d="M-16 -12 L0 -40 L16 -12 Z" fill={finalArmor} stroke="black" />}
+                  {hat === 'mohawk' && <path d="M-2 -28 L2 -28 L2 -5 L-2 -5 Z" fill="#1e293b" stroke="black" strokeWidth="0.5" />}
+                  {hat === 'ushanka' && <rect x="-16" y="-22" width="32" height="14" rx="3" fill="#713f12" stroke="black" />}
+                  {hat === 'bucket' && (
+                      <g>
+                          <rect x="-14" y="-24" width="28" height="24" rx="2" fill="url(#um_darkMetalGrad)" stroke="black" />
+                          <rect x="-14" y="-14" width="28" height="4" fill="black" opacity="0.5" />
+                      </g>
+                  )}
+                  {hat === 'none' && !isFemale && !hasBeard && <path d="M-14 -12 Q0 -26 14 -12" fill={hairColor} stroke="black" strokeWidth="0.5" />}
+                  {isFemale && (
+                      <g>
+                          <path d="M-14 -12 Q0 -32 14 -12 L16 12 L-16 12 Z" fill={hairColor} stroke="black" strokeWidth="0.5" />
+                          <path d="M-14 -12 L-14 10" stroke={hairColor} strokeWidth="2" />
+                          <path d="M14 -12 L14 10" stroke={hairColor} strokeWidth="2" />
+                      </g>
+                  )}
+              </g>
+
+              {/* Weapon Group (Attacking) */}
+              <g style={{ ...getWeaponAnim(weaponAnimType), transformOrigin: '20px 0px' }}>
                   {weapon === 'sword' && (
                       <g transform="translate(16, 0) rotate(-15)">
                           <rect x="-2" y="5" width="4" height="8" fill="#451a03" stroke="black" /> 
@@ -282,38 +306,44 @@ export const UnitModel: React.FC<UnitModelProps> = ({ defId, side, className = "
   ) => {
       const { weapon = 'sword', hat = 'none', size = 0.8 } = config;
       const s = scale * size;
+      const weaponAnimType = weapon === 'sword' ? 'swing' : (weapon === 'bomb' ? 'shoot' : 'shoot');
+
       return (
           <g transform={`translate(${x}, ${y}) scale(${s})`} filter="url(#um_dropShadow)">
-              <rect x="-8" y="5" width="16" height="20" fill="#f1f5f9" stroke="black" rx="2" /> 
-              <line x1="-8" y1="10" x2="8" y2="10" stroke="black" strokeWidth="1" />
-              <line x1="-8" y1="15" x2="8" y2="15" stroke="black" strokeWidth="1" />
-              <line x1="0" y1="25" x2="0" y2="35" stroke="black" strokeWidth="2" /> 
-              <circle cx="0" cy="-5" r="11" fill="white" stroke="black" /> 
-              {!isBack && (
-                  <g>
-                      <circle cx="-4" cy="-4" r="2.5" fill="black" />
-                      <circle cx="4" cy="-4" r="2.5" fill="black" />
-                      <path d="M-1 2 L0 0 L1 2 Z" fill="black" />
-                  </g>
-              )}
-              {hat === 'helmet' && (
-                  <path d="M-12 -8 Q0 -22 12 -8 L12 -3 L-12 -3 Z" fill={teamColorFill} stroke="black" />
-              )}
-              {hat === 'ushanka' && <rect x="-13" y="-16" width="26" height="14" fill="#713f12" rx="2" stroke="black" />}
-              {hat === 'hood' && <path d="M-13 -8 Q0 -24 13 -8 L13 5 Q0 12 -13 5 Z" fill={colors.purple} stroke="black" />}
-              {weapon === 'sword' && (
-                  <rect x="8" y="0" width="4" height="25" fill="url(#um_metalGrad)" stroke="black" transform="rotate(-15)" />
-              )}
-              {weapon === 'bomb' && (
-                  <g transform="translate(14, 10)">
-                      <circle cx="0" cy="0" r="9" fill="#1e293b" stroke="black" />
-                      <path d="M0 -9 L0 -12" stroke="black" strokeWidth="2" />
-                      <circle cx="0" cy="-14" r="2" fill="#ef4444" className="animate-pulse" />
-                  </g>
-              )}
-              {weapon === 'shield' && (
-                  <circle cx="-8" cy="10" r="12" fill="url(#um_woodPattern)" stroke="black" strokeWidth="1.5" />
-              )}
+              <g style={{ ...walkAnim, ...bodyAttackAnim, transformOrigin: 'center center' }}>
+                  <rect x="-8" y="5" width="16" height="20" fill="#f1f5f9" stroke="black" rx="2" /> 
+                  <line x1="-8" y1="10" x2="8" y2="10" stroke="black" strokeWidth="1" />
+                  <line x1="-8" y1="15" x2="8" y2="15" stroke="black" strokeWidth="1" />
+                  <line x1="0" y1="25" x2="0" y2="35" stroke="black" strokeWidth="2" /> 
+                  <circle cx="0" cy="-5" r="11" fill="white" stroke="black" /> 
+                  {!isBack && (
+                      <g>
+                          <circle cx="-4" cy="-4" r="2.5" fill="black" />
+                          <circle cx="4" cy="-4" r="2.5" fill="black" />
+                          <path d="M-1 2 L0 0 L1 2 Z" fill="black" />
+                      </g>
+                  )}
+                  {hat === 'helmet' && (
+                      <path d="M-12 -8 Q0 -22 12 -8 L12 -3 L-12 -3 Z" fill={teamColorFill} stroke="black" />
+                  )}
+                  {hat === 'ushanka' && <rect x="-13" y="-16" width="26" height="14" fill="#713f12" rx="2" stroke="black" />}
+                  {hat === 'hood' && <path d="M-13 -8 Q0 -24 13 -8 L13 5 Q0 12 -13 5 Z" fill={colors.purple} stroke="black" />}
+                  {weapon === 'shield' && (
+                      <circle cx="-8" cy="10" r="12" fill="url(#um_woodPattern)" stroke="black" strokeWidth="1.5" />
+                  )}
+              </g>
+              <g style={{ ...getWeaponAnim(weaponAnimType), transformOrigin: '10px 0px' }}>
+                  {weapon === 'sword' && (
+                      <rect x="8" y="0" width="4" height="25" fill="url(#um_metalGrad)" stroke="black" transform="rotate(-15)" />
+                  )}
+                  {weapon === 'bomb' && (
+                      <g transform="translate(14, 10)">
+                          <circle cx="0" cy="0" r="9" fill="#1e293b" stroke="black" />
+                          <path d="M0 -9 L0 -12" stroke="black" strokeWidth="2" />
+                          <circle cx="0" cy="-14" r="2" fill="#ef4444" className="animate-pulse" />
+                      </g>
+                  )}
+              </g>
           </g>
       );
   };
@@ -325,54 +355,61 @@ export const UnitModel: React.FC<UnitModelProps> = ({ defId, side, className = "
        const { type, color = '#374151' } = config;
        const s = scale;
        const armorFill = type === 'pekka' ? 'url(#um_darkMetalGrad)' : (type === 'mk' ? '#111827' : color);
+       
+       const weaponAnimType = type === 'pekka' ? 'swing' : (type === 'mk' ? 'swing' : 'thrust');
+
        return (
            <g transform={`translate(${x}, ${y}) scale(${s})`} filter="url(#um_dropShadow)">
-               <path d="M-22 -10 L22 -10 L18 40 L-18 40 Z" fill={type === 'golem' ? 'url(#um_stonePattern)' : armorFill} stroke="black" strokeWidth="2" />
-               <rect x="-34" y="5" width="14" height="35" rx="4" fill={type === 'golem' ? 'url(#um_stonePattern)' : armorFill} stroke="black" />
-               <rect x="20" y="5" width="14" height="35" rx="4" fill={type === 'golem' ? 'url(#um_stonePattern)' : armorFill} stroke="black" />
-               <g transform="translate(0, -18)">
+               <g style={{ ...walkAnim, ...bodyAttackAnim, transformOrigin: 'center center' }}>
+                   <path d="M-22 -10 L22 -10 L18 40 L-18 40 Z" fill={type === 'golem' ? 'url(#um_stonePattern)' : armorFill} stroke="black" strokeWidth="2" />
+                   <rect x="-34" y="5" width="14" height="35" rx="4" fill={type === 'golem' ? 'url(#um_stonePattern)' : armorFill} stroke="black" />
+                   <rect x="20" y="5" width="14" height="35" rx="4" fill={type === 'golem' ? 'url(#um_stonePattern)' : armorFill} stroke="black" />
+                   <g transform="translate(0, -18)">
+                       {type === 'pekka' && (
+                           <g>
+                               <path d="M-16 0 L-22 -18 L-10 -8 L0 -14 L10 -8 L22 -18 L16 0 Z" fill={armorFill} stroke="black" />
+                               {!isBack && <circle cx="0" cy="-4" r="3" fill="#fca5a5" className="animate-pulse" filter="drop-shadow(0 0 2px #f87171)" />}
+                           </g>
+                       )}
+                       {type === 'golem' && (
+                           <path d="M-14 -14 L14 -14 L18 10 L-18 10 Z" fill="url(#um_stonePattern)" stroke="black" />
+                       )}
+                       {type === 'mk' && (
+                            <g>
+                                 <circle cx="0" cy="0" r="16" fill="#111827" stroke="black" strokeWidth="2" />
+                                 {!isBack && <rect x="-12" y="-4" width="24" height="6" fill="black" rx="1" />}
+                            </g>
+                       )}
+                       {type === 'giant' && (
+                           <g>
+                               <circle cx="0" cy="0" r="16" fill="url(#um_skinGrad)" stroke="black" />
+                               {!isBack && (
+                                   <g>
+                                       <rect x="-6" y="-6" width="4" height="6" fill="#92400e" transform="rotate(45)" /> 
+                                       <rect x="2" y="-6" width="4" height="6" fill="#92400e" transform="rotate(-45)" />
+                                       <path d="M-10 8 Q0 15 10 8" stroke="#92400e" strokeWidth="4" fill="none" /> 
+                                   </g>
+                               )}
+                           </g>
+                       )}
+                   </g>
+               </g>
+               <g style={{ ...getWeaponAnim(weaponAnimType), transformOrigin: type === 'pekka' ? '30px 10px' : 'center center' }}>
                    {type === 'pekka' && (
-                       <g>
-                           <path d="M-16 0 L-22 -18 L-10 -8 L0 -14 L10 -8 L22 -18 L16 0 Z" fill={armorFill} stroke="black" />
-                           {!isBack && <circle cx="0" cy="-4" r="3" fill="#fca5a5" className="animate-pulse" filter="drop-shadow(0 0 2px #f87171)" />}
+                       <g transform="translate(28, 15) rotate(-15)">
+                            <rect x="-3" y="-5" width="6" height="50" fill="url(#um_metalGrad)" stroke="black" />
+                            <path d="M-3 0 L-10 10 L-3 20" fill="url(#um_metalGrad)" stroke="black" />
                        </g>
                    )}
-                   {type === 'golem' && (
-                       <path d="M-14 -14 L14 -14 L18 10 L-18 10 Z" fill="url(#um_stonePattern)" stroke="black" />
-                   )}
                    {type === 'mk' && (
-                        <g>
-                             <circle cx="0" cy="0" r="16" fill="#111827" stroke="black" strokeWidth="2" />
-                             {!isBack && <rect x="-12" y="-4" width="24" height="6" fill="black" rx="1" />}
-                        </g>
-                   )}
-                   {type === 'giant' && (
                        <g>
-                           <circle cx="0" cy="0" r="16" fill="url(#um_skinGrad)" stroke="black" />
-                           {!isBack && (
-                               <g>
-                                   <rect x="-6" y="-6" width="4" height="6" fill="#92400e" transform="rotate(45)" /> 
-                                   <rect x="2" y="-6" width="4" height="6" fill="#92400e" transform="rotate(-45)" />
-                                   <path d="M-10 8 Q0 15 10 8" stroke="#92400e" strokeWidth="4" fill="none" /> 
-                               </g>
-                           )}
+                           <circle cx="-28" cy="35" r="10" fill="#111827" stroke="black" strokeWidth="2" />
+                           <path d="M-28 25 L-28 45" stroke="#374151" strokeWidth="2" />
+                           <circle cx="28" cy="35" r="10" fill="#111827" stroke="black" strokeWidth="2" />
+                           <path d="M28 25 L28 45" stroke="#374151" strokeWidth="2" />
                        </g>
                    )}
                </g>
-               {type === 'pekka' && (
-                   <g transform="translate(28, 15) rotate(-15)">
-                        <rect x="-3" y="-5" width="6" height="50" fill="url(#um_metalGrad)" stroke="black" />
-                        <path d="M-3 0 L-10 10 L-3 20" fill="url(#um_metalGrad)" stroke="black" />
-                   </g>
-               )}
-               {type === 'mk' && (
-                   <g>
-                       <circle cx="-28" cy="35" r="10" fill="#111827" stroke="black" strokeWidth="2" />
-                       <path d="M-28 25 L-28 45" stroke="#374151" strokeWidth="2" />
-                       <circle cx="28" cy="35" r="10" fill="#111827" stroke="black" strokeWidth="2" />
-                       <path d="M28 25 L28 45" stroke="#374151" strokeWidth="2" />
-                   </g>
-               )}
            </g>
        );
   };
@@ -383,7 +420,7 @@ export const UnitModel: React.FC<UnitModelProps> = ({ defId, side, className = "
   ) => {
        const { type, color = colors.wood } = config;
        return (
-           <g transform={`translate(${x}, ${y}) scale(${scale})`} filter="url(#um_dropShadow)">
+           <g transform={`translate(${x}, ${y}) scale(${scale})`} filter="url(#um_dropShadow)" style={bodyAttackAnim}>
                <rect x="-22" y="0" width="44" height="35" fill={type === 'standard' || type === 'tombstone' ? 'url(#um_stonePattern)' : 'url(#um_woodPattern)'} stroke="black" strokeWidth="1.5" />
                {type !== 'tombstone' && <path d="M-15 10 L15 10 M-15 20 L15 20" stroke="rgba(0,0,0,0.3)" strokeWidth="1" />}
                {type === 'standard' && (
@@ -490,7 +527,7 @@ export const UnitModel: React.FC<UnitModelProps> = ({ defId, side, className = "
           </g>
       );
       return (
-          <g transform={`translate(${x}, ${y}) scale(${s})`} filter="url(#um_dropShadow)">
+          <g transform={`translate(${x}, ${y}) scale(${s})`} filter="url(#um_dropShadow)" style={bodyAttackAnim}>
               {type === 'princess' && (
                   <>
                       {renderBase()}
@@ -572,12 +609,12 @@ export const UnitModel: React.FC<UnitModelProps> = ({ defId, side, className = "
   ) => {
       const { type, color = colors.main, armor = false } = config;
       const s = scale;
-      const wingY = isMoving ? -5 : 0;
+      // Flyers always move a bit, but attack gives recoil
       return (
-          <g transform={`translate(${x}, ${y}) scale(${s})`} filter="url(#um_dropShadow)">
+          <g transform={`translate(${x}, ${y}) scale(${s})`} filter="url(#um_dropShadow)" style={bodyAttackAnim}>
               <g className={isMoving ? "animate-pulse" : ""}>
-                  <path d={`M-15 -5 Q-40 ${-15 + wingY} -15 15 L-5 10 Z`} fill={type === 'bat' ? '#a78bfa' : '#93c5fd'} stroke="black" strokeWidth="1" />
-                  <path d={`M15 -5 Q40 ${-15 + wingY} 15 15 L5 10 Z`} fill={type === 'bat' ? '#a78bfa' : '#93c5fd'} stroke="black" strokeWidth="1" />
+                  <path d={`M-15 -5 Q-40 -15 -15 15 L-5 10 Z`} fill={type === 'bat' ? '#a78bfa' : '#93c5fd'} stroke="black" strokeWidth="1" />
+                  <path d={`M15 -5 Q40 -15 15 15 L5 10 Z`} fill={type === 'bat' ? '#a78bfa' : '#93c5fd'} stroke="black" strokeWidth="1" />
               </g>
               {type === 'minion' && (
                   <g>
@@ -630,6 +667,7 @@ export const UnitModel: React.FC<UnitModelProps> = ({ defId, side, className = "
       );
   };
 
+  // ... (renderUnit implementation remains same, it calls the updated helpers)
   const renderUnit = () => {
     if (variant === 'card') {
          const swarms: Record<string, {count: number, renderer: any}> = {
@@ -676,8 +714,8 @@ export const UnitModel: React.FC<UnitModelProps> = ({ defId, side, className = "
         case 'wizard': return renderHumanoid({ weapon: 'none', hat: 'wizard', hasBeard: true });
         case 'witch': return renderHumanoid({ weapon: 'staff', hat: 'hood', isFemale: true, armorColor: colors.purple });
         case 'hogrider': return (
-            <g transform="translate(50, 50)" filter="url(#um_dropShadow)">
-                 <g transform={`translate(0, 15)`}>
+            <g transform="translate(50, 50)" filter="url(#um_dropShadow)" style={bodyAttackAnim}>
+                 <g transform={`translate(0, 15)`} style={walkAnim}>
                      <rect x="-12" y="5" width="6" height="10" rx="2" fill="#fca5a5" stroke="black" />
                      <rect x="6" y="5" width="6" height="10" rx="2" fill="#fca5a5" stroke="black" />
                      <rect x="-15" y="-10" width="30" height="20" rx="8" fill="#fca5a5" stroke="black" />
@@ -695,8 +733,8 @@ export const UnitModel: React.FC<UnitModelProps> = ({ defId, side, className = "
             </g>
         );
         case 'prince': return (
-            <g transform={`translate(50, 50) ${isCharging ? 'rotate(-10)' : ''}`} filter="url(#um_dropShadow)">
-                 <g transform={`translate(0, 15)`}>
+            <g transform={`translate(50, 50) ${isCharging ? 'rotate(-10)' : ''}`} filter="url(#um_dropShadow)" style={bodyAttackAnim}>
+                 <g transform={`translate(0, 15)`} style={walkAnim}>
                      <rect x="-12" y="5" width="6" height="10" rx="2" fill="#a8a29e" stroke="black" />
                      <rect x="6" y="5" width="6" height="10" rx="2" fill="#a8a29e" stroke="black" />
                      <rect x="-15" y="-10" width="30" height="20" rx="8" fill={teamColorFill} stroke="black" /> 
@@ -705,8 +743,8 @@ export const UnitModel: React.FC<UnitModelProps> = ({ defId, side, className = "
             </g>
         );
         case 'darkprince': return (
-            <g transform={`translate(50, 50) ${isCharging ? 'rotate(-10)' : ''}`} filter="url(#um_dropShadow)">
-                 <g transform={`translate(0, 15)`}>
+            <g transform={`translate(50, 50) ${isCharging ? 'rotate(-10)' : ''}`} filter="url(#um_dropShadow)" style={bodyAttackAnim}>
+                 <g transform={`translate(0, 15)`} style={walkAnim}>
                      <rect x="-12" y="5" width="6" height="10" rx="2" fill="#57534e" stroke="black" />
                      <rect x="6" y="5" width="6" height="10" rx="2" fill="#57534e" stroke="black" />
                      <rect x="-15" y="-10" width="30" height="20" rx="8" fill="#1f2937" stroke="black" /> 
@@ -752,7 +790,7 @@ export const UnitModel: React.FC<UnitModelProps> = ({ defId, side, className = "
         case 'electrodragon': return renderFlyer({ type: 'dragon', color: '#60a5fa' });
         case 'flyingmachine': return renderFlyer({ type: 'machine' });
         case 'balloon': return (
-            <g transform="translate(50, 50)" filter="url(#um_dropShadow)">
+            <g transform="translate(50, 50)" filter="url(#um_dropShadow)" style={bodyAttackAnim}>
                 <circle cx="0" cy="-20" r="25" fill="#ef4444" stroke="black" />
                 <rect x="-8" y="10" width="16" height="12" fill="url(#um_woodPattern)" stroke="black" />
                 {renderSkeleton({ size: 0.5 }, 0, 15)}
@@ -764,11 +802,11 @@ export const UnitModel: React.FC<UnitModelProps> = ({ defId, side, className = "
         case 'goblin_hut': return renderBuilding({ type: 'hut' });
         case 'tombstone': return renderBuilding({ type: 'tombstone' });
         case 'cannoncart': return (
-            <g transform="translate(50, 50)">
+            <g transform="translate(50, 50)" style={walkAnim}>
                 <rect x="-15" y="10" width="30" height="20" fill="url(#um_woodPattern)" stroke="black" />
                 <circle cx="-15" cy="30" r="8" fill="#1f2937" stroke="black" />
                 <circle cx="15" cy="30" r="8" fill="#1f2937" stroke="black" />
-                <g transform="translate(0, -10)">{renderBuilding({ type: 'standard' }, 0, 0, 0.8)}</g>
+                <g transform="translate(0, -10)" style={bodyAttackAnim}>{renderBuilding({ type: 'standard' }, 0, 0, 0.8)}</g>
             </g>
         );
         case 'rage': return renderSpell({ type: 'bottle', color: '#a855f7' });
@@ -789,19 +827,19 @@ export const UnitModel: React.FC<UnitModelProps> = ({ defId, side, className = "
             </g>
         );
         case 'icespirit': return (
-            <g transform="translate(50, 50)">
+            <g transform="translate(50, 50)" style={{...walkAnim, ...bodyAttackAnim}}>
                 <circle cx="0" cy="0" r="10" fill="url(#um_iceGrad)" stroke="#22d3ee" />
                 <circle cx="-3" cy="-2" r="1.5" fill="black" /> <circle cx="3" cy="-2" r="1.5" fill="black" />
             </g>
         );
         case 'electrospirit': return (
-            <g transform="translate(50, 50)">
+            <g transform="translate(50, 50)" style={{...walkAnim, ...bodyAttackAnim}}>
                 <circle cx="0" cy="0" r="10" fill="#67e8f9" stroke="#0891b2" />
                 <path d="M-5 -15 L0 -10 L5 -15" stroke="#facc15" strokeWidth="2" fill="none" />
             </g>
         );
         case 'battleram': return (
-            <g transform="translate(50, 50)">
+            <g transform="translate(50, 50)" style={bodyAttackAnim}>
                 <rect x="-5" y="-15" width="10" height="40" fill="url(#um_woodPattern)" stroke="black" transform="rotate(90)" />
                 {renderHumanoid({ hat: 'none', weapon: 'none' }, -15, 0, 0.7)}
                 {renderHumanoid({ hat: 'none', weapon: 'none' }, 15, 0, 0.7)}

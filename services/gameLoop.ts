@@ -23,6 +23,20 @@ const getMass = (entity: GameEntity): number => {
     return 0.5;
 };
 
+// Helper: Apply Damage handling Shields
+const applyDamage = (entity: GameEntity, damage: number) => {
+    if (entity.shieldHp > 0) {
+        if (damage >= entity.shieldHp) {
+            entity.shieldHp = 0;
+            // Excess damage is absorbed by the shield break in Clash Royale logic
+        } else {
+            entity.shieldHp -= damage;
+        }
+    } else {
+        entity.hp -= damage;
+    }
+};
+
 // Helper: Spawn Units (used for spawners and death spawns)
 const spawnUnits = (
     defId: string, 
@@ -64,7 +78,9 @@ const spawnUnits = (
             rageTimer: 0,
             rootTimer: 0,
             chargeTimer: 0,
-            isCharging: false
+            isCharging: false,
+            isInvisible: defId === 'royalghost',
+            invisibleTimer: 0
         });
     });
 };
@@ -201,11 +217,11 @@ export const updateGame = (state: GameState, dt: number): GameState => {
                          // Check if 't' has already been processed and moved to newEntities
                          const processedEntity = newEntities.find(e => e.id === t.id);
                          if (processedEntity) {
-                             processedEntity.hp -= damage;
+                             applyDamage(processedEntity, damage);
                              if (entity.defId === 'snowball') processedEntity.frozenTimer = 1000;
                          } else {
                              // Not processed yet, modify source (will be cloned later in this loop)
-                             t.hp -= damage;
+                             applyDamage(t, damage);
                              if (entity.defId === 'snowball') t.frozenTimer = 1000;
                          }
                      }
@@ -265,11 +281,11 @@ export const updateGame = (state: GameState, dt: number): GameState => {
 
                          const processedEntity = newEntities.find(e => e.id === t.id);
                          if (processedEntity) {
-                             processedEntity.hp -= damage;
+                             applyDamage(processedEntity, damage);
                              processedEntity.stunTimer = 500;
                              newParticles.push({id: generateId(), x: t.x, y: t.y, type: 'hit', color: '#0ea5e9', size: 3, createdAt: now, duration: 300});
                          } else {
-                             t.hp -= damage;
+                             applyDamage(t, damage);
                              t.stunTimer = 500;
                              newParticles.push({id: generateId(), x: t.x, y: t.y, type: 'hit', color: '#0ea5e9', size: 3, createdAt: now, duration: 300});
                          }
@@ -321,8 +337,8 @@ export const updateGame = (state: GameState, dt: number): GameState => {
                                  let damage = entity.stats.damage / 24;
                                  if (t.type === CardType.TOWER) damage *= 0.35;
 
-                                 if (processedEntity) processedEntity.hp -= damage;
-                                 else t.hp -= damage;
+                                 if (processedEntity) applyDamage(processedEntity, damage);
+                                 else applyDamage(t, damage);
 
                                  if(Math.random() > 0.7) newParticles.push({id: generateId(), x: t.x, y: t.y, type: 'hit', color: '#f97316', size: 1, createdAt: now, duration: 200});
                              }
@@ -361,6 +377,21 @@ export const updateGame = (state: GameState, dt: number): GameState => {
         // RAGE MODE: Infinite Rage
         if (state.gameMode === 'RAGE' && nextEntity.type !== CardType.SPELL) {
             nextEntity.rageTimer = 100;
+        }
+
+        // Royal Ghost Visibility Logic
+        if (nextEntity.defId === 'royalghost' && nextEntity.deployTimer <= 0) {
+            if (nextEntity.state === 'ATTACKING') {
+                nextEntity.isInvisible = false;
+                nextEntity.invisibleTimer = 2500;
+            } else {
+                if ((nextEntity.invisibleTimer || 0) > 0) {
+                    nextEntity.invisibleTimer = (nextEntity.invisibleTimer || 0) - dt;
+                    nextEntity.isInvisible = false;
+                } else {
+                    nextEntity.isInvisible = true;
+                }
+            }
         }
 
         // Skip logic if deploying or stunned/frozen (unless spell)
@@ -411,6 +442,11 @@ export const updateGame = (state: GameState, dt: number): GameState => {
              
              // Buildings (Towers) should not stick to targets outside their range
              if (nextEntity.stats.isBuilding && dist > reach) {
+                 target = undefined;
+                 nextEntity.targetId = null;
+             }
+             // If target becomes invisible, drop it
+             else if (target.isInvisible) {
                  target = undefined;
                  nextEntity.targetId = null;
              }
@@ -507,9 +543,9 @@ export const updateGame = (state: GameState, dt: number): GameState => {
                         // Melee
                         const processedTarget = newEntities.find(e => e.id === target!.id);
                         if (processedTarget) {
-                            processedTarget.hp -= dmg;
+                            applyDamage(processedTarget, dmg);
                         } else {
-                            target.hp -= dmg;
+                            applyDamage(target, dmg);
                         }
                         
                         newParticles.push({id: generateId(), x: target.x, y: target.y, type: 'hit', color: '#fff', size: 2, createdAt: now, duration: 200});
@@ -682,7 +718,7 @@ export const updateGame = (state: GameState, dt: number): GameState => {
                         let damage = p.damage;
                         if (e.type === CardType.TOWER) damage *= 0.35; // Crown Tower Damage Reduction for projectiles too if they are "spells" but mostly troops don't have this.
                         
-                        e.hp -= damage;
+                        applyDamage(e, damage);
                         if (p.effect === 'LOG') {
                             e.x += (p.ownerSide === PlayerSide.PLAYER ? 0 : 0); // Knockback?
                         }
@@ -691,7 +727,7 @@ export const updateGame = (state: GameState, dt: number): GameState => {
                 newParticles.push({id: generateId(), x: p.x, y: p.y, type: 'explosion', color: '#f97316', size: p.areaRadius*2, createdAt: now, duration: 300});
             } else if (target) {
                 // Single Target
-                target.hp -= p.damage;
+                applyDamage(target, p.damage);
                 newParticles.push({id: generateId(), x: target.x, y: target.y, type: 'hit', color: '#fff', size: 2, createdAt: now, duration: 200});
             }
 

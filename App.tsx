@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { HomeScreen, DebugActionType } from './components/HomeScreen';
 import { CollectionScreen } from './components/CollectionScreen';
@@ -334,6 +335,7 @@ const App: React.FC = () => {
     const [mpStatus, setMpStatus] = useState<'IDLE'|'CONNECTING'|'WAITING'|'CONNECTED'|'ERROR'>('IDLE');
     const [mpError, setMpError] = useState<string>();
     const [mpArenaId, setMpArenaId] = useState<number | null>(null);
+    const hostingModeRef = useRef<GameMode>('STANDARD'); // Track hosting mode without re-rendering listeners
     
     // UI State
     const [isMenuHidden, setIsMenuHidden] = useState(false);
@@ -446,76 +448,69 @@ const App: React.FC = () => {
     // --- EFFECT: Multiplayer Listeners ---
     useEffect(() => {
         const unsub = mpService.onMessage((msg) => {
-            // Determine role logic based on message type to avoid stale state issues during handshake
-            // HOST listens for: INPUT, JOIN
-            // GUEST listens for: START, UPDATE
-            
-            if (msg.type === 'INPUT' || msg.type === 'JOIN') {
-                // --- HOST LOGIC ---
-                // We process inputs regardless of local 'mpRole' state if we are receiving inputs, 
-                // but checking mpRole is safer if we are fully established. 
-                // However, for the Join handshake, we are definitely Host if we get a JOIN.
-                
-                if (msg.type === 'INPUT') {
+            if (msg.type === 'JOIN') {
+                // --- HOST LOGIC: Guest Joined ---
+                // Updates opponent name AND starts the battle since we now know the guest is ready and their name
+                setOpponentName(msg.name);
+                handleStartBattle(hostingModeRef.current, true);
+            }
+            else if (msg.type === 'INPUT') {
+                // --- HOST LOGIC: Guest Input ---
+                if (msg.action === 'PLACE_CARD') {
                     setGameState(prev => {
                         if (!prev || prev.gameOver) return prev;
                         
-                        if (msg.action === 'PLACE_CARD') {
-                            const hostX = 100 - msg.x;
-                            const hostY = 100 - msg.y;
+                        const hostX = 100 - msg.x;
+                        const hostY = 100 - msg.y;
 
-                            const cardDef = CARDS.find(c => c.id === msg.cardId);
-                            if (cardDef && prev.enemyElixir >= cardDef.cost) {
-                                // Force Tournament Standard (Level 9) for multiplayer
-                                const level = 9;
-                                const stats = calculateStats(cardDef.stats, level);
-                                const spawnOffsets = getSpawnPattern(cardDef.spawnCount);
-                                
-                                const newEntities = spawnOffsets.map((off, i) => ({
-                                    id: `${cardDef.id}_e_${Date.now()}_${i}`,
-                                    defId: cardDef.id,
-                                    type: cardDef.type,
-                                    side: PlayerSide.ENEMY,
-                                    x: Math.max(2, Math.min(98, hostX - off.x)), 
-                                    y: Math.max(2, Math.min(98, hostY - off.y)),
-                                    hp: cardDef.type === CardType.SPELL ? 1 : stats.hp,
-                                    maxHp: cardDef.type === CardType.SPELL ? 1 : stats.hp,
-                                    shieldHp: stats.shieldHp || 0,
-                                    maxShieldHp: stats.shieldHp || 0,
-                                    stats: stats,
-                                    level: level,
-                                    lastAttackTime: 0, lastDamageTime: 0, lastSpawnTime: 0, targetId: null, 
-                                    state: cardDef.type === CardType.SPELL ? 'CASTING' : 'IDLE',
-                                    deployTimer: cardDef.stats.deployTime + (i * 100),
-                                    frozenTimer: 0, stunTimer: 0, rageTimer: 0, rootTimer: 0, chargeTimer: 0, isCharging: false
-                                })) as GameEntity[];
+                        const cardDef = CARDS.find(c => c.id === msg.cardId);
+                        if (cardDef && prev.enemyElixir >= cardDef.cost) {
+                            // Force Tournament Standard (Level 9) for multiplayer
+                            const level = 9;
+                            const stats = calculateStats(cardDef.stats, level);
+                            const spawnOffsets = getSpawnPattern(cardDef.spawnCount);
+                            
+                            const newEntities = spawnOffsets.map((off, i) => ({
+                                id: `${cardDef.id}_e_${Date.now()}_${i}`,
+                                defId: cardDef.id,
+                                type: cardDef.type,
+                                side: PlayerSide.ENEMY,
+                                x: Math.max(2, Math.min(98, hostX - off.x)), 
+                                y: Math.max(2, Math.min(98, hostY - off.y)),
+                                hp: cardDef.type === CardType.SPELL ? 1 : stats.hp,
+                                maxHp: cardDef.type === CardType.SPELL ? 1 : stats.hp,
+                                shieldHp: stats.shieldHp || 0,
+                                maxShieldHp: stats.shieldHp || 0,
+                                stats: stats,
+                                level: level,
+                                lastAttackTime: 0, lastDamageTime: 0, lastSpawnTime: 0, targetId: null, 
+                                state: cardDef.type === CardType.SPELL ? 'CASTING' : 'IDLE',
+                                deployTimer: cardDef.stats.deployTime + (i * 100),
+                                frozenTimer: 0, stunTimer: 0, rageTimer: 0, rootTimer: 0, chargeTimer: 0, isCharging: false
+                            })) as GameEntity[];
 
-                                return {
-                                    ...prev,
-                                    entities: [...prev.entities, ...newEntities],
-                                    enemyElixir: prev.enemyElixir - cardDef.cost
-                                };
-                            }
-                        } else if (msg.action === 'EMOTE') {
                             return {
                                 ...prev,
-                                activeEmotes: [...prev.activeEmotes, {
-                                    id: Date.now().toString(),
-                                    side: PlayerSide.ENEMY,
-                                    content: msg.content,
-                                    createdAt: Date.now()
-                                }]
+                                entities: [...prev.entities, ...newEntities],
+                                enemyElixir: prev.enemyElixir - cardDef.cost
                             };
                         }
                         return prev;
                     });
-                } else if (msg.type === 'JOIN') {
-                    setOpponentName(msg.name);
+                } else if (msg.action === 'EMOTE') {
+                    setGameState(prev => prev ? ({
+                        ...prev,
+                        activeEmotes: [...prev.activeEmotes, {
+                            id: Date.now().toString(),
+                            side: PlayerSide.ENEMY,
+                            content: msg.content,
+                            createdAt: Date.now()
+                        }]
+                    }) : null);
                 }
             } 
             else if (msg.type === 'START' || msg.type === 'UPDATE') {
                 // --- GUEST LOGIC ---
-                // If we receive START or UPDATE, we are the Guest.
                 
                 if (msg.type === 'START') {
                     setGameState(transformStateForGuest(msg.state));
@@ -539,7 +534,7 @@ const App: React.FC = () => {
             }
         });
         return unsub;
-    }, [deck, kingLevel]); // Removed mpRole dependency to fix race condition
+    }, [deck, kingLevel]); 
 
     const generateDailyShop = (currentTrophies: number, preserveFree: boolean = false) => {
         const availableCards = CARDS.filter(c => c.unlockTrophies <= currentTrophies);
@@ -887,14 +882,15 @@ const App: React.FC = () => {
         setMpStatus('CONNECTING');
         setMpError(undefined);
         const code = mpService.generateCode();
+        hostingModeRef.current = mode; // Store mode to use when Guest joins
         
         return new Promise((resolve) => {
             mpService.initHost(
                 code,
-                () => { // On Connect (Guest Joined)
-                    setMpStatus('CONNECTED');
+                () => { // On Connect (Guest Connected to PeerJS)
+                    setMpStatus('WAITING'); // Wait for explicit JOIN message
                     setMpRole('HOST');
-                    handleStartBattle(mode, true);
+                    // We DO NOT start battle here anymore. We wait for JOIN message.
                 },
                 (err) => {
                     setMpStatus('ERROR');

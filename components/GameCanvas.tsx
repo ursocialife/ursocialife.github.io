@@ -1,3 +1,4 @@
+
 import React, { useRef, useEffect, useState, useMemo } from 'react';
 import { GameEntity, PlayerSide, CardType, ActiveEmote, GameProjectile, GameParticle, MovementType, PlayerCollection } from '../types';
 import { UnitModel } from './UnitModels';
@@ -12,8 +13,9 @@ const EntityComponent: React.FC<{ entity: GameEntity, aspectRatio: number }> = (
     const hpPct = Math.max(0, (entity.hp / entity.maxHp) * 100);
     const shieldPct = entity.maxShieldHp > 0 ? Math.max(0, (entity.shieldHp / entity.maxShieldHp) * 100) : 0;
     
+    // Determine visual state
     let action: 'IDLE' | 'MOVING' | 'ATTACKING' | 'CASTING' = entity.state;
-    let facing: 'front' | 'back' = isEnemy ? 'front' : 'back';
+    const facing: 'front' | 'back' = isEnemy ? 'front' : 'back';
     
     const isDeploying = entity.deployTimer > 0;
     const isSpell = entity.type === CardType.SPELL;
@@ -439,6 +441,27 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
           0%, 100% { transform: translateY(0) scaleY(1); }
           50% { transform: translateY(-3%) scaleY(1.02); }
         }
+        @keyframes walk-waddle {
+          0%, 100% { transform: rotate(-2deg) translateY(0); }
+          50% { transform: rotate(2deg) translateY(-2%); }
+        }
+        @keyframes attack-melee {
+          0% { transform: rotate(0deg); }
+          20% { transform: rotate(-40deg); } 
+          40% { transform: rotate(50deg); }
+          60% { transform: rotate(30deg); } 
+          100% { transform: rotate(0deg); } 
+        }
+        @keyframes attack-thrust {
+          0% { transform: translateY(0); }
+          30% { transform: translateY(-12px); }
+          100% { transform: translateY(0); }
+        }
+        @keyframes attack-recoil {
+          0% { transform: translateY(0) scale(1); }
+          10% { transform: translateY(2px) scale(0.95); } 
+          100% { transform: translateY(0) scale(1); }
+        }
         @keyframes snow-fall {
             0% { background-position: 0 0; }
             100% { background-position: 50px 500px; }
@@ -608,9 +631,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
                 if (!card) return null;
                 
                 const offsets = getSpawnPattern(card.spawnCount);
-                const isBuilding = card.stats.isBuilding;
-                const sizeMultiplier = isBuilding ? 2.5 : 1.6;
-                const baseSize = 6 * sizeMultiplier; 
+                const baseSize = 6 * (card.stats.isBuilding ? 2.5 : 1.6);
                 
                 const isValid = checkPlacementValidity(mousePos.x, mousePos.y, selectedCardId);
                 const level = collection ? (collection[card.id]?.level || 1) : 1;

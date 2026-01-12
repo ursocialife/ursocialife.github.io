@@ -106,6 +106,7 @@ export interface GameEntity {
   chargeTimer: number;
   isCharging: boolean;
   isInvisible?: boolean;
+  invisibleTimer?: number;
 }
 
 export interface GameProjectile {

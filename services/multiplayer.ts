@@ -26,15 +26,16 @@ class MultiplayerService {
         }
         this.conn = null;
         this.peer = null;
-        this.listeners = [];
         this.myCode = null;
+        // NOTE: We do NOT clear listeners here because the UI components (App.tsx) 
+        // rely on persistent subscriptions that survive session restarts.
+        
         // Small delay to ensure sockets close
         return new Promise(resolve => setTimeout(resolve, 100));
     }
 
     public async initHost(code: string, onConnect: () => void, onError: (err: string) => void) {
         if (typeof Peer === 'undefined') {
-            // Safety check, though import should handle it
             console.error("PeerJS not loaded");
             onError("Multiplayer library not loaded");
             return;
